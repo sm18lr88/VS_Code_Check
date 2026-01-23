@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="16" fill="#1e1e1e"/>
+  <g fill="none" stroke="#4fc3f7" stroke-width="4" stroke-linecap="round">
+    <!-- File icons stacked -->
+    <rect x="28" y="20" width="40" height="50" rx="4" fill="#2d2d2d" stroke="#4fc3f7"/>
+    <line x1="36" y1="32" x2="60" y2="32"/>
+    <line x1="36" y1="42" x2="56" y2="42"/>
+    <line x1="36" y1="52" x2="52" y2="52"/>
+
+    <!-- Second file (offset) -->
+    <rect x="44" y="36" width="40" height="50" rx="4" fill="#2d2d2d" stroke="#4fc3f7"/>
+    <line x1="52" y1="48" x2="76" y2="48"/>
+    <line x1="52" y1="58" x2="72" y2="58"/>
+    <line x1="52" y1="68" x2="68" y2="68"/>
+
+    <!-- Third file (offset) -->
+    <rect x="60" y="52" width="40" height="50" rx="4" fill="#2d2d2d" stroke="#4fc3f7"/>
+    <line x1="68" y1="64" x2="92" y2="64"/>
+    <line x1="68" y1="74" x2="88" y2="74"/>
+    <line x1="68" y1="84" x2="84" y2="84"/>
+  </g>
+  <!-- Checkmark -->
+  <circle cx="96" cy="96" r="20" fill="#4caf50"/>
+  <path d="M86 96 l8 8 l16 -16" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,14 +1,42 @@
 {
   "name": "open-all-lintable-files",
   "displayName": "Open All Lintable Files",
-  "description": "Opens all lintable files in the workspace to trigger type checkers and linters",
-  "version": "0.0.1",
-  "publisher": "local",
+  "description": "Opens all lintable files in your workspace to trigger type checkers and linters, helping you see all problems at once",
+  "version": "1.0.0",
+  "publisher": "sm18lr88",
+  "author": {
+    "name": "sm18lr88"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sm18lr88/open-all-lintable-files"
+  },
+  "bugs": {
+    "url": "https://github.com/sm18lr88/open-all-lintable-files/issues"
+  },
+  "homepage": "https://github.com/sm18lr88/open-all-lintable-files#readme",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
+    "Linters",
     "Other"
+  ],
+  "keywords": [
+    "lint",
+    "linter",
+    "typescript",
+    "eslint",
+    "type-check",
+    "open files",
+    "workspace",
+    "diagnostics"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -42,12 +70,14 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "build": "tsx esbuild.ts",
-    "watch": "tsx esbuild.ts --watch"
+    "watch": "tsx esbuild.ts --watch",
+    "package": "vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.74.0",
     "esbuild": "^0.20.0",
+    "sharp": "^0.34.5",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   }

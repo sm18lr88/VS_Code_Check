@@ -2,7 +2,10 @@
 node_modules/**
 src/**
 .gitignore
+.git/**
 esbuild.ts
 tsconfig.json
+*.vsix
+icon.svg
 **/*.ts
 **/*.map

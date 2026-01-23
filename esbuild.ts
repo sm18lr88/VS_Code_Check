@@ -14,11 +14,15 @@ const buildOptions: esbuild.BuildOptions = {
   minify: !isWatch,
 };
 
-if (isWatch) {
-  const ctx = await esbuild.context(buildOptions);
-  ctx.watch();
-  console.log('Watching for changes...');
-} else {
-  await esbuild.build(buildOptions);
-  console.log('Build complete');
+async function main() {
+  if (isWatch) {
+    const ctx = await esbuild.context(buildOptions);
+    await ctx.watch();
+    console.log('Watching for changes...');
+  } else {
+    await esbuild.build(buildOptions);
+    console.log('Build complete');
+  }
 }
+
+main();
