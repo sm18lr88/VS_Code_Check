@@ -1,0 +1,54 @@
+{
+  "name": "open-all-lintable-files",
+  "displayName": "Open All Lintable Files",
+  "description": "Opens all lintable files in the workspace to trigger type checkers and linters",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "openAllLintableFiles.open",
+        "title": "Open All Lintable Files",
+        "icon": "$(files)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "openAllLintableFiles",
+          "title": "Open All Lintable Files",
+          "icon": "$(checklist)"
+        }
+      ]
+    },
+    "views": {
+      "openAllLintableFiles": [
+        {
+          "id": "openAllLintableFiles.view",
+          "name": "Lintable Files",
+          "type": "webview",
+          "icon": "$(checklist)"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "tsx esbuild.ts",
+    "watch": "tsx esbuild.ts --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.74.0",
+    "esbuild": "^0.20.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
