@@ -47,6 +47,17 @@
         "icon": "$(files)"
       }
     ],
+    "configuration": {
+      "title": "Open All Lintable Files",
+      "properties": {
+        "openAllLintableFiles.openConcurrency": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "markdownDescription": "How many files to open in parallel when running Open All Lintable Files. Set to 0 to open all files at once (may freeze VS Code in large workspaces)."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

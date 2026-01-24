@@ -197,6 +197,8 @@ const EXCLUDED_FILES = [
 const IGNORE_FILE_NAMES = [".gitignore", ".eslintignore", ".prettierignore"];
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const CONFIG_NAMESPACE = "openAllLintableFiles";
+const DEFAULT_OPEN_CONCURRENCY = 8;
 
 function parseIgnoreLine(line: string): string | null {
   const trimmed = line.trim();
@@ -290,6 +292,31 @@ function shouldExcludeFile(fileName: string): boolean {
   return false;
 }
 
+function getOpenConcurrency(totalFiles: number): number {
+  const config = vscode.workspace.getConfiguration(CONFIG_NAMESPACE);
+  const raw = config.get<number>("openConcurrency", DEFAULT_OPEN_CONCURRENCY);
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return Math.min(DEFAULT_OPEN_CONCURRENCY, totalFiles);
+  }
+  if (raw <= 0) {
+    return totalFiles;
+  }
+  const value = Math.max(1, Math.floor(raw));
+  return Math.min(value, totalFiles);
+}
+
+async function tryOpenFile(file: vscode.Uri): Promise<boolean> {
+  try {
+    await vscode.window.showTextDocument(file, {
+      preview: false,
+      preserveFocus: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function closeAllTabs() {
   saveCurrentEditorState();
   await vscode.commands.executeCommand("workbench.action.closeAllEditors");
@@ -368,27 +395,60 @@ async function openFilesWithProgress(
   progress: vscode.Progress<{ message?: string; increment?: number }>,
   token: vscode.CancellationToken,
 ): Promise<number> {
-  let opened = 0;
-  for (const file of filesToOpen) {
-    if (token.isCancellationRequested) {
-      vscode.window.showInformationMessage(
-        `Cancelled. Opened ${opened} of ${filesToOpen.length} files.`,
-      );
-      return opened;
-    }
-    try {
-      await vscode.window.showTextDocument(file, {
-        preview: false,
-        preserveFocus: true,
-      });
-      opened++;
+  const total = filesToOpen.length;
+  const concurrency = getOpenConcurrency(total);
+  if (concurrency <= 1) {
+    let opened = 0;
+    for (const file of filesToOpen) {
+      if (token.isCancellationRequested) {
+        vscode.window.showInformationMessage(
+          `Cancelled. Opened ${opened} of ${total} files.`,
+        );
+        return opened;
+      }
+      if (await tryOpenFile(file)) {
+        opened++;
+      }
       progress.report({
-        message: `Opening files... (${opened}/${filesToOpen.length})`,
-        increment: 100 / filesToOpen.length,
+        message: `Opening files... (${opened}/${total})`,
+        increment: 100 / total,
       });
-    } catch {
-      // Skip files that can't be opened
     }
+    return opened;
+  }
+
+  let opened = 0;
+  let currentIndex = 0;
+  const increment = 100 / total;
+
+  const openNext = async () => {
+    while (true) {
+      if (token.isCancellationRequested) {
+        return;
+      }
+      const index = currentIndex++;
+      if (index >= total) {
+        return;
+      }
+      const file = filesToOpen[index];
+      if (await tryOpenFile(file)) {
+        opened++;
+      }
+      progress.report({
+        message: `Opening files... (${opened}/${total})`,
+        increment,
+      });
+    }
+  };
+
+  const workerCount = Math.min(concurrency, total);
+  const workers = Array.from({ length: workerCount }, () => openNext());
+  await Promise.all(workers);
+
+  if (token.isCancellationRequested) {
+    vscode.window.showInformationMessage(
+      `Cancelled. Opened ${opened} of ${total} files.`,
+    );
   }
   return opened;
 }

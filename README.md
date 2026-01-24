@@ -39,6 +39,10 @@ The extension automatically excludes:
 
 You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "Open All Lintable Files".
 
+## Configuration
+
+- `openAllLintableFiles.openConcurrency` (default: `8`) — How many files to open in parallel. Set to `0` to open all files at once (may freeze VS Code in very large workspaces).
+
 ## Why?
 
 Many linters and type checkers in VS Code only analyze open files. This extension helps you:
