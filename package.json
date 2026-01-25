@@ -2,7 +2,7 @@
   "name": "open-all-lintable-files",
   "displayName": "Open All Lintable Files",
   "description": "Opens all lintable files in your workspace to trigger type checkers and linters, helping you see all problems at once",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "sm18lr88",
   "author": {
     "name": "sm18lr88"
@@ -45,6 +45,11 @@
         "command": "openAllLintableFiles.open",
         "title": "Open All Lintable Files",
         "icon": "$(files)"
+      },
+      {
+        "command": "openAllLintableFiles.openFolder",
+        "title": "Open Folder Files",
+        "icon": "$(folder-opened)"
       }
     ],
     "configuration": {
@@ -76,6 +81,15 @@
           "icon": "$(checklist)"
         }
       ]
+    },
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "openAllLintableFiles.openFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "2_workspace@100"
+        }
+      ]
     }
   },
   "scripts": {
@@ -87,6 +101,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^3.7.1",
     "esbuild": "^0.20.0",
     "sharp": "^0.34.5",
     "tsx": "^4.0.0",

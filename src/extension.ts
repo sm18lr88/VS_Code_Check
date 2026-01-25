@@ -453,6 +453,93 @@ async function openFilesWithProgress(
   return opened;
 }
 
+function buildExcludePatternFromIgnoreFiles(
+  ignorePatterns: string[],
+): string {
+  const allPatterns = new Set<string>();
+
+  // Only add patterns from ignore files, NOT hardcoded EXCLUDED_DIRECTORIES
+  // This allows users to explicitly open excluded folders when they right-click them
+  for (const pattern of ignorePatterns) {
+    // Handle negation patterns (we skip them - they're for inclusion)
+    if (pattern.startsWith("!")) {
+      continue;
+    }
+
+    // If pattern contains glob chars, use as-is with ** prefix if needed
+    if (pattern.includes("*")) {
+      if (pattern.startsWith("**/")) {
+        allPatterns.add(pattern);
+      } else {
+        allPatterns.add(`**/${pattern}`);
+      }
+    } else {
+      // Treat as directory or file name
+      allPatterns.add(`**/${pattern}/**`);
+      allPatterns.add(`**/${pattern}`);
+    }
+  }
+
+  return allPatterns.size > 0 ? `{${Array.from(allPatterns).join(",")}}` : "";
+}
+
+async function findLintableFilesInFolders(
+  folderUris: vscode.Uri[],
+  progress: vscode.Progress<{ message?: string; increment?: number }>,
+  token: vscode.CancellationToken,
+): Promise<vscode.Uri[]> {
+  const fileSet = new Set<string>(); // For deduplication
+  const allFiles: vscode.Uri[] = [];
+
+  for (let i = 0; i < folderUris.length; i++) {
+    if (token.isCancellationRequested) {
+      break;
+    }
+
+    const folderUri = folderUris[i];
+    const folderName = path.basename(folderUri.fsPath);
+
+    progress.report({
+      message: `Reading ignore patterns from ${folderName}... (${i + 1}/${folderUris.length})`,
+    });
+
+    // Read ignore patterns from this specific folder
+    const ignorePatterns = await readIgnorePatterns(folderUri);
+
+    progress.report({
+      message: `Finding files in ${folderName}... (${i + 1}/${folderUris.length})`,
+    });
+
+    // Create relative pattern scoped to this folder
+    const includePattern = new vscode.RelativePattern(
+      folderUri,
+      `**/*.{${LINTABLE_EXTENSIONS.join(",")}}`,
+    );
+
+    // Build exclude pattern WITHOUT hardcoded EXCLUDED_DIRECTORIES
+    // This respects user intent when they explicitly select an excluded folder
+    const excludePattern = buildExcludePatternFromIgnoreFiles(ignorePatterns);
+
+    // Find files in this folder only
+    const filesInFolder = await vscode.workspace.findFiles(
+      includePattern,
+      excludePattern || undefined,
+    );
+
+    // Deduplicate files (important when folders overlap or are nested)
+    for (const file of filesInFolder) {
+      const filePath = file.toString();
+      if (!fileSet.has(filePath)) {
+        fileSet.add(filePath);
+        allFiles.push(file);
+      }
+    }
+  }
+
+  // Apply additional filtering (file exclusions, size limits)
+  return await filterLintableFiles(allFiles, token);
+}
+
 async function openAllLintableFiles() {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -509,6 +596,85 @@ async function openAllLintableFiles() {
 
       if (!token.isCancellationRequested) {
         vscode.window.showInformationMessage(`Opened ${opened} lintable files`);
+      }
+    },
+  );
+}
+
+async function openFolderLintableFiles(
+  folderUri?: vscode.Uri,
+  selectedUris?: vscode.Uri[],
+): Promise<void> {
+  // 1. Determine which folders to process
+  let foldersToProcess: vscode.Uri[];
+  if (selectedUris && selectedUris.length > 0) {
+    foldersToProcess = selectedUris;
+  } else if (folderUri) {
+    foldersToProcess = [folderUri];
+  } else {
+    foldersToProcess = [];
+  }
+
+  // 2. Validate input
+  if (foldersToProcess.length === 0) {
+    vscode.window.showWarningMessage("No folder selected");
+    return;
+  }
+
+  // 3. Filter to only folder URIs (in case files were included)
+  const folderUris: vscode.Uri[] = [];
+  for (const uri of foldersToProcess) {
+    try {
+      const stat = await vscode.workspace.fs.stat(uri);
+      if (stat.type === vscode.FileType.Directory) {
+        folderUris.push(uri);
+      }
+    } catch {
+      // Skip invalid URIs
+    }
+  }
+
+  if (folderUris.length === 0) {
+    vscode.window.showWarningMessage("No valid folders selected");
+    return;
+  }
+
+  // 4. Save editor state for restore functionality
+  saveCurrentEditorState();
+
+  // 5. Process with progress indicator
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Opening lintable files from ${folderUris.length} folder(s)...`,
+      cancellable: true,
+    },
+    async (progress, token) => {
+      // Find files in selected folders
+      const filesToOpen = await findLintableFilesInFolders(
+        folderUris,
+        progress,
+        token,
+      );
+
+      if (token.isCancellationRequested) {
+        return;
+      }
+
+      if (filesToOpen.length === 0) {
+        vscode.window.showInformationMessage("No lintable files found");
+        return;
+      }
+
+      progress.report({ message: `Opening ${filesToOpen.length} files...` });
+
+      // Process and open files
+      const opened = await openFilesWithProgress(filesToOpen, progress, token);
+
+      if (!token.isCancellationRequested) {
+        vscode.window.showInformationMessage(
+          `Opened ${opened} lintable files from selected folder(s)`,
+        );
       }
     },
   );
@@ -622,6 +788,13 @@ export function activate(context: vscode.ExtensionContext) {
     openAllLintableFiles,
   );
   context.subscriptions.push(commandDisposable);
+
+  // Register folder context menu command
+  const folderCommandDisposable = vscode.commands.registerCommand(
+    "openAllLintableFiles.openFolder",
+    openFolderLintableFiles,
+  );
+  context.subscriptions.push(folderCommandDisposable);
 
   // Register webview provider for activity bar
   const provider = new LintableFilesViewProvider(context.extensionUri);

@@ -5,6 +5,7 @@ A VS Code extension that opens all lintable files in your workspace to trigger t
 ## Features
 
 - **Open All Lintable Files** - Opens all code and config files in your workspace
+- **Open Folder Files** - Right-click any folder in the Explorer to open only its lintable files
 - **Close All Tabs** - Closes all open editor tabs
 - **Restore Previous Tabs** - Restores tabs that were open before the last action
 
@@ -31,11 +32,19 @@ The extension automatically excludes:
 
 ## Usage
 
+### Activity Bar Panel
+
 1. Click the **checklist icon** in the Activity Bar (left sidebar)
 2. Click one of the buttons in the panel:
    - **Open All Lintable Files** - Opens files and triggers linters
    - **Close All Tabs** - Closes everything
    - **Restore Previous Tabs** - Undo the last action
+
+### Folder Context Menu
+
+Right-click any folder in the Explorer and select **"Open Folder Files"** to open only lintable files from that specific folder (and its subfolders).
+
+### Command Palette
 
 You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "Open All Lintable Files".
 

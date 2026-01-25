@@ -14,7 +14,7 @@ const buildOptions: esbuild.BuildOptions = {
   minify: !isWatch,
 };
 
-async function main() {
+(async () => {
   if (isWatch) {
     const ctx = await esbuild.context(buildOptions);
     await ctx.watch();
@@ -23,6 +23,4 @@ async function main() {
     await esbuild.build(buildOptions);
     console.log('Build complete');
   }
-}
-
-main();
+})();
