@@ -16,10 +16,22 @@ A VS Code extension that opens all lintable files in your workspace to trigger t
 | JavaScript/TypeScript | `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.mts`, `.cts` |
 | Python | `.py`, `.pyi` |
 | Web | `.html`, `.css`, `.scss`, `.sass`, `.less`, `.vue`, `.svelte`, `.astro` |
-| Config | `.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`, `.xml` |
-| Markup | `.md`, `.mdx` |
-| Data | `.sql`, `.graphql`, `.gql` |
-| Other | `.rs`, `.go`, `.java`, `.kt`, `.cs`, `.cpp`, `.c`, `.h`, `.hpp`, `.rb`, `.php`, `.sh`, `.bash`, `.zsh`, `.ps1` |
+| Config | `.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`, `.xml`, `.hcl` |
+| Markup | `.md`, `.mdx`, `.tex` |
+| Data/Query | `.sql`, `.graphql`, `.gql` |
+| System Languages | `.rs`, `.c`, `.cpp`, `.cc`, `.cxx`, `.h`, `.hpp`, `.hxx`, `.go`, `.zig`, `.nim`, `.d`, `.v` |
+| JVM Languages | `.java`, `.kt`, `.kts`, `.scala`, `.groovy`, `.gradle` |
+| .NET Languages | `.cs`, `.fs`, `.fsx`, `.fsi`, `.vb`, `.vba`, `.vbs` |
+| Functional Languages | `.clj`, `.cljs`, `.cljc`, `.edn`, `.hs`, `.lhs`, `.ml`, `.mli`, `.ex`, `.exs`, `.erl`, `.hrl`, `.lisp`, `.lsp`, `.cl`, `.scm`, `.rkt` |
+| Scripting | `.rb`, `.php`, `.pl`, `.pm`, `.lua`, `.r`, `.R`, `.sh`, `.bash`, `.zsh`, `.ps1`, `.bat`, `.cmd`, `.vim` |
+| Mobile/Native | `.swift`, `.m`, `.mm`, `.dart`, `.as`, `.mxml` |
+| Infrastructure | `.tf`, `.tfvars`, `.dockerfile`, `.pp` |
+| Build Systems | `.make`, `.cmake`, `.bazel` |
+| Protocols/IDL | `.proto`, `.thrift`, `.avsc` |
+| Shaders | `.glsl`, `.hlsl`, `.wgsl`, `.frag`, `.vert`, `.shader` |
+| Blockchain | `.sol`, `.move`, `.cairo` |
+| Scientific | `.jl`, `.sas`, `.do`, `.ado`, `.f`, `.f90`, `.f95` |
+| Other | `.pas`, `.asm`, `.s`, `.cr` |
 
 ### Smart Exclusions
 
