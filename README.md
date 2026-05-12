@@ -1,13 +1,11 @@
-# Open All Lintable Files
+# VS Code Check
 
-A VS Code extension that opens all lintable files in your workspace to trigger type checkers and linters, helping you see all problems at once.
+A concise VS Code extension that refreshes Problems diagnostics by loading lintable workspace files on demand.
 
 ## Features
 
-- **Open All Lintable Files** - Opens all code and config files in your workspace
-- **Open Folder Files** - Right-click any folder in the Explorer to open only its lintable files
-- **Close All Tabs** - Closes all open editor tabs
-- **Restore Previous Tabs** - Restores tabs that were open before the last action
+- **VS Code Check** - Click the status bar button to re-check all lintable workspace files
+- **Check Folder** - Right-click any folder in the Explorer to check only its lintable files
 
 ### Supported File Types
 
@@ -25,8 +23,8 @@ A VS Code extension that opens all lintable files in your workspace to trigger t
 | Functional Languages | `.clj`, `.cljs`, `.cljc`, `.edn`, `.hs`, `.lhs`, `.ml`, `.mli`, `.ex`, `.exs`, `.erl`, `.hrl`, `.lisp`, `.lsp`, `.cl`, `.scm`, `.rkt` |
 | Scripting | `.rb`, `.php`, `.pl`, `.pm`, `.lua`, `.r`, `.R`, `.sh`, `.bash`, `.zsh`, `.ps1`, `.bat`, `.cmd`, `.vim` |
 | Mobile/Native | `.swift`, `.m`, `.mm`, `.dart`, `.as`, `.mxml` |
-| Infrastructure | `.tf`, `.tfvars`, `.dockerfile`, `.pp` |
-| Build Systems | `.make`, `.cmake`, `.bazel` |
+| Infrastructure | `.tf`, `.tfvars`, `.dockerfile`, `Dockerfile`, `.pp` |
+| Build Systems | `.make`, `.cmake`, `.bazel`, `Makefile`, `CMakeLists.txt` |
 | Protocols/IDL | `.proto`, `.thrift`, `.avsc` |
 | Shaders | `.glsl`, `.hlsl`, `.wgsl`, `.frag`, `.vert`, `.shader` |
 | Blockchain | `.sol`, `.move`, `.cairo` |
@@ -40,29 +38,25 @@ The extension automatically excludes:
 - **Directories**: `node_modules`, `.git`, `venv`, `.venv`, `dist`, `build`, `__pycache__`, `.next`, `coverage`, and many more
 - **Files**: Lock files (`package-lock.json`, `yarn.lock`, etc.), minified files (`*.min.js`), compiled files, logs, and environment files
 - **Large files**: Files over 1MB are skipped
-- **Gitignore patterns**: Respects `.gitignore`, `.eslintignore`, and `.prettierignore`
+- **Generated/dependency folders**: Skips common build outputs, caches, virtual environments, and dependency folders
 
 ## Usage
 
-### Activity Bar Panel
+### Status Bar Button
 
-1. Click the **checklist icon** in the Activity Bar (left sidebar)
-2. Click one of the buttons in the panel:
-   - **Open All Lintable Files** - Opens files and triggers linters
-   - **Close All Tabs** - Closes everything
-   - **Restore Previous Tabs** - Undo the last action
+Click **Code Check** in the VS Code status bar to re-check all lintable files in the current workspace.
 
 ### Folder Context Menu
 
-Right-click any folder in the Explorer and select **"Open Folder Files"** to open only lintable files from that specific folder (and its subfolders).
+Right-click any folder in the Explorer and select **"VS Code Check: Check Folder"** to check only lintable files from that specific folder and its subfolders.
 
 ### Command Palette
 
-You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "Open All Lintable Files".
+You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "VS Code Check: Check Workspace".
 
 ## Configuration
 
-- `openAllLintableFiles.openConcurrency` (default: `8`) — How many files to open in parallel. Set to `0` to open all files at once (may freeze VS Code in very large workspaces).
+- `vsCodeCheck.openConcurrency` (default: `32`) — How many files to load in parallel. Set to `0` to load all files at once (may freeze VS Code in very large workspaces).
 
 ## Why?
 
@@ -83,11 +77,11 @@ Many linters and type checkers in VS Code only analyze open files. This extensio
 ### Build from Source
 
 ```bash
-git clone https://github.com/sm18lr88/open-all-lintable-files.git
-cd open-all-lintable-files
+git clone https://github.com/sm18lr88/VS_Code_Check.git
+cd VS_Code_Check
 npm install
-npm run build
-npx @vscode/vsce package
+npm run ci
+npm run package
 ```
 
 ## License
