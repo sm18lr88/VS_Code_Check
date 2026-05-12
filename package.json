@@ -2,7 +2,7 @@
   "name": "vs-code-check",
   "displayName": "VS Code Check",
   "description": "A concise VS Code extension that refreshes Problems diagnostics by loading lintable workspace files on demand",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "sm18lr88",
   "author": {
     "name": "sm18lr88"
