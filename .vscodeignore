@@ -12,6 +12,8 @@ esbuild.ts
 tsconfig.json
 package-lock.json
 *.vsix
+screenshot.png
+screenshots/**
 icon.svg
 **/*.ts
 **/*.map
