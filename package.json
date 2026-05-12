@@ -1,8 +1,8 @@
 {
-  "name": "open-all-lintable-files",
-  "displayName": "Open All Lintable Files",
-  "description": "Opens all lintable files in your workspace to trigger type checkers and linters, helping you see all problems at once",
-  "version": "1.0.1",
+  "name": "vs-code-check",
+  "displayName": "VS Code Check",
+  "description": "A concise VS Code extension that refreshes Problems diagnostics by loading lintable workspace files on demand",
+  "version": "1.1.0",
   "publisher": "sm18lr88",
   "author": {
     "name": "sm18lr88"
@@ -10,12 +10,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sm18lr88/open-all-lintable-files"
+    "url": "https://github.com/sm18lr88/VS_Code_Check"
   },
   "bugs": {
-    "url": "https://github.com/sm18lr88/open-all-lintable-files/issues"
+    "url": "https://github.com/sm18lr88/VS_Code_Check/issues"
   },
-  "homepage": "https://github.com/sm18lr88/open-all-lintable-files#readme",
+  "homepage": "https://github.com/sm18lr88/VS_Code_Check#readme",
   "icon": "icon.png",
   "galleryBanner": {
     "color": "#1e1e1e",
@@ -24,6 +24,11 @@
   "engines": {
     "vscode": "^1.74.0"
   },
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:vsCodeCheck.checkWorkspace",
+    "onCommand:vsCodeCheck.checkFolder"
+  ],
   "categories": [
     "Linters",
     "Other"
@@ -34,7 +39,8 @@
     "typescript",
     "eslint",
     "type-check",
-    "open files",
+    "vs code check",
+    "diagnostics refresh",
     "workspace",
     "diagnostics"
   ],
@@ -42,50 +48,31 @@
   "contributes": {
     "commands": [
       {
-        "command": "openAllLintableFiles.open",
-        "title": "Open All Lintable Files",
-        "icon": "$(files)"
+        "command": "vsCodeCheck.checkWorkspace",
+        "title": "VS Code Check: Check Workspace",
+        "icon": "$(pulse)"
       },
       {
-        "command": "openAllLintableFiles.openFolder",
-        "title": "Open Folder Files",
+        "command": "vsCodeCheck.checkFolder",
+        "title": "VS Code Check: Check Folder",
         "icon": "$(folder-opened)"
       }
     ],
     "configuration": {
-      "title": "Open All Lintable Files",
+      "title": "VS Code Check",
       "properties": {
-        "openAllLintableFiles.openConcurrency": {
+        "vsCodeCheck.openConcurrency": {
           "type": "number",
-          "default": 8,
+          "default": 32,
           "minimum": 0,
-          "markdownDescription": "How many files to open in parallel when running Open All Lintable Files. Set to 0 to open all files at once (may freeze VS Code in large workspaces)."
+          "markdownDescription": "How many files to load in parallel when running VS Code Check. Set to 0 to load all files at once (may freeze VS Code in large workspaces)."
         }
       }
-    },
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "openAllLintableFiles",
-          "title": "Open All Lintable Files",
-          "icon": "$(checklist)"
-        }
-      ]
-    },
-    "views": {
-      "openAllLintableFiles": [
-        {
-          "id": "openAllLintableFiles.view",
-          "name": "Lintable Files",
-          "type": "webview",
-          "icon": "$(checklist)"
-        }
-      ]
     },
     "menus": {
       "explorer/context": [
         {
-          "command": "openAllLintableFiles.openFolder",
+          "command": "vsCodeCheck.checkFolder",
           "when": "explorerResourceIsFolder",
           "group": "2_workspace@100"
         }
@@ -94,7 +81,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
+    "typecheck": "tsc --noEmit",
     "build": "tsx esbuild.ts",
+    "ci": "npm run typecheck && npm run build",
     "watch": "tsx esbuild.ts --watch",
     "package": "vsce package"
   },

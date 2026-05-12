@@ -1,21 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 
-// Store previous editor state for restore functionality
-let previousEditorState: vscode.Uri[] = [];
-
-function saveCurrentEditorState() {
-  previousEditorState = vscode.window.tabGroups.all
-    .flatMap((group) => group.tabs)
-    .map((tab) => {
-      if (tab.input instanceof vscode.TabInputText) {
-        return tab.input.uri;
-      }
-      return null;
-    })
-    .filter((uri): uri is vscode.Uri => uri !== null);
-}
-
 const LINTABLE_EXTENSIONS = [
   // JavaScript/TypeScript
   "ts",
@@ -163,11 +148,19 @@ const LINTABLE_EXTENSIONS = [
   "ado",
 ];
 
+const LINTABLE_EXTENSION_SET = new Set(LINTABLE_EXTENSIONS);
+const LINTABLE_FILE_NAMES = new Set([
+  "dockerfile",
+  "makefile",
+  "gnumakefile",
+  "cmakelists.txt",
+]);
+
 // Hardcoded directories to always exclude
 const EXCLUDED_DIRECTORIES = [
   // Version control
   ".git",
-  ~".svn",
+  ".svn",
   ".hg",
   // Dependencies
   "node_modules",
@@ -188,6 +181,8 @@ const EXCLUDED_DIRECTORIES = [
   "*.egg-info",
   ".tox",
   ".nox",
+  ".pytest_tmp",
+  "__pypackages__",
   // Build outputs
   "dist",
   "build",
@@ -203,12 +198,29 @@ const EXCLUDED_DIRECTORIES = [
   ".vs",
   ".eclipse",
   ".settings",
+  // AI tool workspaces
+  ".claude",
+  ".agents",
+  ".codex",
+  ".sisyphus",
+  ".cursor",
+  ".aider",
+  ".continue",
+  // Performance & quality tools
+  ".pf",
+  ".sonar",
+  ".codacy",
+  ".qodana",
   // Caches
   ".cache",
   ".parcel-cache",
   ".turbo",
   ".nx",
   ".angular",
+  ".yarn",
+  "__snapshots__",
+  "storybook-static",
+  ".expo",
   // Framework specific
   ".next",
   ".nuxt",
@@ -216,13 +228,35 @@ const EXCLUDED_DIRECTORIES = [
   ".astro",
   ".vercel",
   ".netlify",
+  // JVM build tools
+  ".gradle",
+  ".metals",
+  ".bloop",
+  ".ammonite",
+  // Elixir
+  "deps",
+  ".mix",
+  ".hex",
+  // Haskell/Elm
+  ".stack-work",
+  "elm-stuff",
+  // Dart/Flutter
+  ".dart_tool",
+  // iOS/macOS
+  "Pods",
+  "DerivedData",
+  "xcuserdata",
+  // Static site output
+  "_site",
+  // Cloud/DevOps
+  ".firebase",
+  ".wrangler",
+  ".pulumi",
   // Coverage/Testing
   "coverage",
   ".nyc_output",
   "htmlcov",
   // Temporary
-  "tmp",
-  "temp",
   ".tmp",
   ".temp",
   // Logs
@@ -235,6 +269,15 @@ const EXCLUDED_DIRECTORIES = [
   "pkg",
   // .NET
   "packages",
+  ".nuget",
+  // Generic build/generated artifacts
+  "__generated__",   // GraphQL codegen, apollo, etc.
+  "generated",       // common codegen output directory
+  "codegen",         // codegen output
+  "gen",             // generated (Go controller-gen, etc.)
+  "artifacts",       // generic build artifacts
+  ".ccls-cache",     // C/C++ ccls LSP cache
+  ".clangd",         // Clangd LSP cache
   // Misc
   ".terraform",
   ".serverless",
@@ -259,6 +302,13 @@ const EXCLUDED_FILES = [
   "go.sum",
   "packages.lock.json",
   "flake.lock",
+  "uv.lock",
+  "bun.lockb",
+  "deno.lock",
+  "mix.lock",
+  "Podfile.lock",
+  "pubspec.lock",
+  "Package.resolved",
   // Minified files
   "*.min.js",
   "*.min.css",
@@ -284,85 +334,94 @@ const EXCLUDED_FILES = [
   // DS_Store
   ".DS_Store",
   "Thumbs.db",
+  // Generated source files (auto-overwritten, not user-editable)
+  // Dart/Flutter (build_runner, freezed, mockito)
+  "*.g.dart",
+  "*.freezed.dart",
+  "*.mocks.dart",
+  // Go (go generate, controller-gen, protoc-gen-go)
+  "*.pb.go",
+  "*_generated.go",
+  "*.gen.go",
+  "zz_generated.*.go",
+  // Python protobuf/gRPC (protoc)
+  "*_pb2.py",
+  "*_pb2_grpc.py",
+  "*_pb2.pyi",
+  // JavaScript/TypeScript protobuf (protoc-gen-js, ts-proto)
+  "*_pb.js",
+  "*_pb.ts",
+  "*_grpc_pb.js",
+  "*_grpc_web_pb.js",
+  // TypeScript/JavaScript GraphQL codegen (graphql-code-generator, apollo)
+  "*.generated.ts",
+  "*.generated.tsx",
+  "*.generated.js",
+  // Snapshot files (Jest, Vitest, etc.)
+  "*.snap",
 ];
 
-// Patterns from common ignore files
-const IGNORE_FILE_NAMES = [".gitignore", ".eslintignore", ".prettierignore"];
+// Pre-computed lookup structures for efficient path-component filtering
+// (defense-in-depth: catches anything that slips through the glob exclude pattern)
+const EXCLUDED_DIR_NAMES = new Set<string>(
+  EXCLUDED_DIRECTORIES.filter((d) => !d.includes("*")),
+);
+const EXCLUDED_DIR_GLOB_PATTERNS = EXCLUDED_DIRECTORIES.filter((d) =>
+  d.includes("*"),
+);
+
+function isDirComponentExcluded(segment: string): boolean {
+  if (EXCLUDED_DIR_NAMES.has(segment)) {
+    return true;
+  }
+  for (const pattern of EXCLUDED_DIR_GLOB_PATTERNS) {
+    const regex = new RegExp(
+      "^" +
+        pattern.replaceAll(".", String.raw`\.`).replaceAll("*", ".*") +
+        "$",
+    );
+    if (regex.test(segment)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Returns true if any workspace-relative path segment belongs to an excluded directory. */
+function isInExcludedDirectory(relativePath: string): boolean {
+  const normalized = relativePath.replace(/\\/g, "/");
+  for (const segment of normalized.split("/")) {
+    if (segment && isDirComponentExcluded(segment)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getRelativePathInRoots(
+  uri: vscode.Uri,
+  rootUris: readonly vscode.Uri[],
+): string {
+  for (const rootUri of rootUris) {
+    const relativePath = path.relative(rootUri.fsPath, uri.fsPath);
+    if (relativePath && !relativePath.startsWith("..") && !path.isAbsolute(relativePath)) {
+      return relativePath;
+    }
+  }
+  return path.basename(uri.fsPath);
+}
 
 const MAX_FILE_SIZE = 1024 * 1024; // 1MB
-const CONFIG_NAMESPACE = "openAllLintableFiles";
-const DEFAULT_OPEN_CONCURRENCY = 8;
+const CONFIG_NAMESPACE = "vsCodeCheck";
+const DEFAULT_OPEN_CONCURRENCY = 32;
+const FILTER_CONCURRENCY = 64;
+const PROGRESS_UPDATE_INTERVAL_MS = 250;
 
-function parseIgnoreLine(line: string): string | null {
-  const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith("#")) {
-    return null;
-  }
-  let pattern = trimmed;
-  if (pattern.startsWith("/")) {
-    pattern = pattern.slice(1);
-  }
-  if (pattern.endsWith("/")) {
-    pattern = pattern.slice(0, -1);
-  }
-  return pattern;
-}
-
-async function readIgnorePatterns(
-  workspaceFolder: vscode.Uri,
-): Promise<string[]> {
-  const patterns: string[] = [];
-
-  for (const ignoreFileName of IGNORE_FILE_NAMES) {
-    try {
-      const ignoreFileUri = vscode.Uri.joinPath(
-        workspaceFolder,
-        ignoreFileName,
-      );
-      const content = await vscode.workspace.fs.readFile(ignoreFileUri);
-      const lines = Buffer.from(content).toString("utf-8").split("\n");
-
-      for (const line of lines) {
-        const pattern = parseIgnoreLine(line);
-        if (pattern) {
-          patterns.push(pattern);
-        }
-      }
-    } catch {
-      // Ignore file doesn't exist, skip
-    }
-  }
-
-  return patterns;
-}
-
-function buildExcludePattern(additionalPatterns: string[]): string {
+function buildExcludePattern(): string {
   const allPatterns = new Set<string>();
 
-  // Add hardcoded directory patterns
   for (const dir of EXCLUDED_DIRECTORIES) {
     allPatterns.add(`**/${dir}/**`);
-  }
-
-  // Add patterns from ignore files
-  for (const pattern of additionalPatterns) {
-    // Handle negation patterns (we skip them - they're for inclusion)
-    if (pattern.startsWith("!")) {
-      continue;
-    }
-
-    // If pattern contains glob chars, use as-is with ** prefix if needed
-    if (pattern.includes("*")) {
-      if (pattern.startsWith("**/")) {
-        allPatterns.add(pattern);
-      } else {
-        allPatterns.add(`**/${pattern}`);
-      }
-    } else {
-      // Treat as directory or file name
-      allPatterns.add(`**/${pattern}/**`);
-      allPatterns.add(`**/${pattern}`);
-    }
   }
 
   return `{${Array.from(allPatterns).join(",")}}`;
@@ -385,6 +444,15 @@ function shouldExcludeFile(fileName: string): boolean {
   return false;
 }
 
+function isLintableFileName(fileName: string): boolean {
+  const normalizedFileName = fileName.toLowerCase();
+  if (LINTABLE_FILE_NAMES.has(normalizedFileName)) {
+    return true;
+  }
+  const extension = path.extname(normalizedFileName).slice(1);
+  return extension !== "" && LINTABLE_EXTENSION_SET.has(extension);
+}
+
 function getOpenConcurrency(totalFiles: number): number {
   const config = vscode.workspace.getConfiguration(CONFIG_NAMESPACE);
   const raw = config.get<number>("openConcurrency", DEFAULT_OPEN_CONCURRENCY);
@@ -398,88 +466,55 @@ function getOpenConcurrency(totalFiles: number): number {
   return Math.min(value, totalFiles);
 }
 
-async function tryOpenFile(file: vscode.Uri): Promise<boolean> {
+async function tryLoadFileForDiagnostics(file: vscode.Uri): Promise<boolean> {
   try {
-    await vscode.window.showTextDocument(file, {
-      preview: false,
-      preserveFocus: true,
-    });
+    await vscode.workspace.openTextDocument(file);
     return true;
   } catch {
     return false;
   }
 }
 
-async function closeAllTabs() {
-  saveCurrentEditorState();
-  await vscode.commands.executeCommand("workbench.action.closeAllEditors");
-  vscode.window.showInformationMessage("Closed all tabs");
-}
-
-async function restoreTabs() {
-  if (previousEditorState.length === 0) {
-    vscode.window.showWarningMessage("No previous state to restore");
-    return;
-  }
-
-  await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: "Restoring tabs...",
-      cancellable: true,
-    },
-    async (progress, token) => {
-      let restored = 0;
-      for (const uri of previousEditorState) {
-        if (token.isCancellationRequested) {
-          vscode.window.showInformationMessage(
-            `Cancelled. Restored ${restored} of ${previousEditorState.length} tabs.`,
-          );
-          return;
-        }
-
-        try {
-          await vscode.window.showTextDocument(uri, {
-            preview: false,
-            preserveFocus: true,
-          });
-          restored++;
-          progress.report({
-            message: `Restoring tabs... (${restored}/${previousEditorState.length})`,
-            increment: 100 / previousEditorState.length,
-          });
-        } catch {
-          // Skip files that can't be opened
-        }
-      }
-
-      vscode.window.showInformationMessage(`Restored ${restored} tabs`);
-    },
-  );
-}
-
 async function filterLintableFiles(
   files: vscode.Uri[],
   token: vscode.CancellationToken,
+  rootUris: readonly vscode.Uri[],
 ): Promise<vscode.Uri[]> {
   const filesToOpen: vscode.Uri[] = [];
-  for (const file of files) {
-    if (token.isCancellationRequested) {
-      break;
-    }
-    const fileName = path.basename(file.fsPath);
-    if (shouldExcludeFile(fileName)) {
-      continue;
-    }
-    try {
-      const stat = await vscode.workspace.fs.stat(file);
-      if (stat.size <= MAX_FILE_SIZE) {
-        filesToOpen.push(file);
+  let currentIndex = 0;
+
+  const filterNext = async () => {
+    while (true) {
+      if (token.isCancellationRequested) {
+        return;
       }
-    } catch {
-      // Skip files that can't be accessed
+      const index = currentIndex++;
+      if (index >= files.length) {
+        return;
+      }
+
+      const file = files[index];
+      const relativePath = getRelativePathInRoots(file, rootUris);
+      if (isInExcludedDirectory(relativePath)) {
+        continue;
+      }
+      const fileName = path.basename(file.fsPath);
+      if (!isLintableFileName(fileName) || shouldExcludeFile(fileName)) {
+        continue;
+      }
+      try {
+        const stat = await vscode.workspace.fs.stat(file);
+        if (stat.size <= MAX_FILE_SIZE) {
+          filesToOpen.push(file);
+        }
+      } catch {
+        // Skip files that can't be accessed
+      }
     }
-  }
+  };
+
+  const workerCount = Math.min(FILTER_CONCURRENCY, files.length);
+  await Promise.all(Array.from({ length: workerCount }, () => filterNext()));
   return filesToOpen;
 }
 
@@ -499,11 +534,11 @@ async function openFilesWithProgress(
         );
         return opened;
       }
-      if (await tryOpenFile(file)) {
+      if (await tryLoadFileForDiagnostics(file)) {
         opened++;
       }
       progress.report({
-        message: `Opening files... (${opened}/${total})`,
+        message: `Loading files for diagnostics... (${opened}/${total})`,
         increment: 100 / total,
       });
     }
@@ -513,6 +548,8 @@ async function openFilesWithProgress(
   let opened = 0;
   let currentIndex = 0;
   const increment = 100 / total;
+  let lastProgressUpdate = 0;
+  let lastReportedOpened = 0;
 
   const openNext = async () => {
     while (true) {
@@ -524,13 +561,19 @@ async function openFilesWithProgress(
         return;
       }
       const file = filesToOpen[index];
-      if (await tryOpenFile(file)) {
+      if (await tryLoadFileForDiagnostics(file)) {
         opened++;
       }
-      progress.report({
-        message: `Opening files... (${opened}/${total})`,
-        increment,
-      });
+      const now = Date.now();
+      if (now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
+        const openedSinceLastReport = opened - lastReportedOpened;
+        lastReportedOpened = opened;
+        lastProgressUpdate = now;
+        progress.report({
+          message: `Loading files for diagnostics... (${opened}/${total})`,
+          increment: increment * openedSinceLastReport,
+        });
+      }
     }
   };
 
@@ -538,42 +581,19 @@ async function openFilesWithProgress(
   const workers = Array.from({ length: workerCount }, () => openNext());
   await Promise.all(workers);
 
+  if (opened > lastReportedOpened) {
+    progress.report({
+      message: `Loading files for diagnostics... (${opened}/${total})`,
+      increment: increment * (opened - lastReportedOpened),
+    });
+  }
+
   if (token.isCancellationRequested) {
     vscode.window.showInformationMessage(
       `Cancelled. Opened ${opened} of ${total} files.`,
     );
   }
   return opened;
-}
-
-function buildExcludePatternFromIgnoreFiles(
-  ignorePatterns: string[],
-): string {
-  const allPatterns = new Set<string>();
-
-  // Only add patterns from ignore files, NOT hardcoded EXCLUDED_DIRECTORIES
-  // This allows users to explicitly open excluded folders when they right-click them
-  for (const pattern of ignorePatterns) {
-    // Handle negation patterns (we skip them - they're for inclusion)
-    if (pattern.startsWith("!")) {
-      continue;
-    }
-
-    // If pattern contains glob chars, use as-is with ** prefix if needed
-    if (pattern.includes("*")) {
-      if (pattern.startsWith("**/")) {
-        allPatterns.add(pattern);
-      } else {
-        allPatterns.add(`**/${pattern}`);
-      }
-    } else {
-      // Treat as directory or file name
-      allPatterns.add(`**/${pattern}/**`);
-      allPatterns.add(`**/${pattern}`);
-    }
-  }
-
-  return allPatterns.size > 0 ? `{${Array.from(allPatterns).join(",")}}` : "";
 }
 
 async function findLintableFilesInFolders(
@@ -593,25 +613,12 @@ async function findLintableFilesInFolders(
     const folderName = path.basename(folderUri.fsPath);
 
     progress.report({
-      message: `Reading ignore patterns from ${folderName}... (${i + 1}/${folderUris.length})`,
-    });
-
-    // Read ignore patterns from this specific folder
-    const ignorePatterns = await readIgnorePatterns(folderUri);
-
-    progress.report({
       message: `Finding files in ${folderName}... (${i + 1}/${folderUris.length})`,
     });
 
-    // Create relative pattern scoped to this folder
-    const includePattern = new vscode.RelativePattern(
-      folderUri,
-      `**/*.{${LINTABLE_EXTENSIONS.join(",")}}`,
-    );
+    const includePattern = new vscode.RelativePattern(folderUri, "**/*");
 
-    // Build exclude pattern WITHOUT hardcoded EXCLUDED_DIRECTORIES
-    // This respects user intent when they explicitly select an excluded folder
-    const excludePattern = buildExcludePatternFromIgnoreFiles(ignorePatterns);
+    const excludePattern = buildExcludePattern();
 
     // Find files in this folder only
     const filesInFolder = await vscode.workspace.findFiles(
@@ -630,36 +637,25 @@ async function findLintableFilesInFolders(
   }
 
   // Apply additional filtering (file exclusions, size limits)
-  return await filterLintableFiles(allFiles, token);
+  return await filterLintableFiles(allFiles, token, folderUris);
 }
 
-async function openAllLintableFiles() {
+async function checkWorkspace() {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders || workspaceFolders.length === 0) {
     vscode.window.showWarningMessage("No workspace folder open");
     return;
   }
 
-  saveCurrentEditorState();
-
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: "Opening lintable files...",
+      title: "Diagnosing workspace...",
       cancellable: true,
     },
     async (progress, token) => {
-      progress.report({ message: "Reading ignore patterns..." });
-
-      // Collect ignore patterns from all workspace folders
-      const ignorePatterns: string[] = [];
-      for (const folder of workspaceFolders) {
-        const patterns = await readIgnorePatterns(folder.uri);
-        ignorePatterns.push(...patterns);
-      }
-
-      const includePattern = `**/*.{${LINTABLE_EXTENSIONS.join(",")}}`;
-      const excludePattern = buildExcludePattern(ignorePatterns);
+      const includePattern = "**/*";
+      const excludePattern = buildExcludePattern();
 
       progress.report({ message: "Finding files..." });
 
@@ -672,7 +668,11 @@ async function openAllLintableFiles() {
         return;
       }
 
-      const filesToOpen = await filterLintableFiles(files, token);
+      const filesToOpen = await filterLintableFiles(
+        files,
+        token,
+        workspaceFolders.map((folder) => folder.uri),
+      );
 
       if (token.isCancellationRequested) {
         return;
@@ -683,18 +683,22 @@ async function openAllLintableFiles() {
         return;
       }
 
-      progress.report({ message: `Opening ${filesToOpen.length} files...` });
+      progress.report({
+        message: `Loading ${filesToOpen.length} files for diagnostics...`,
+      });
 
       const opened = await openFilesWithProgress(filesToOpen, progress, token);
 
       if (!token.isCancellationRequested) {
-        vscode.window.showInformationMessage(`Opened ${opened} lintable files`);
+        vscode.window.showInformationMessage(
+          `Loaded ${opened} lintable files for diagnostics`,
+        );
       }
     },
   );
 }
 
-async function openFolderLintableFiles(
+async function checkFolder(
   folderUri?: vscode.Uri,
   selectedUris?: vscode.Uri[],
 ): Promise<void> {
@@ -732,14 +736,10 @@ async function openFolderLintableFiles(
     return;
   }
 
-  // 4. Save editor state for restore functionality
-  saveCurrentEditorState();
-
-  // 5. Process with progress indicator
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `Opening lintable files from ${folderUris.length} folder(s)...`,
+      title: `Diagnosing ${folderUris.length} folder(s)...`,
       cancellable: true,
     },
     async (progress, token) => {
@@ -759,143 +759,43 @@ async function openFolderLintableFiles(
         return;
       }
 
-      progress.report({ message: `Opening ${filesToOpen.length} files...` });
+      progress.report({
+        message: `Loading ${filesToOpen.length} files for diagnostics...`,
+      });
 
-      // Process and open files
       const opened = await openFilesWithProgress(filesToOpen, progress, token);
 
       if (!token.isCancellationRequested) {
         vscode.window.showInformationMessage(
-          `Opened ${opened} lintable files from selected folder(s)`,
+          `Loaded ${opened} lintable files from selected folder(s) for diagnostics`,
         );
       }
     },
   );
 }
 
-class LintableFilesViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "openAllLintableFiles.view";
-
-  constructor(private readonly _extensionUri: vscode.Uri) {}
-
-  resolveWebviewView(webviewView: vscode.WebviewView) {
-    webviewView.webview.options = {
-      enableScripts: true,
-    };
-
-    webviewView.webview.html = this._getHtmlContent();
-
-    webviewView.webview.onDidReceiveMessage(async (message) => {
-      switch (message.command) {
-        case "openAll":
-          await openAllLintableFiles();
-          break;
-        case "closeAll":
-          await closeAllTabs();
-          break;
-        case "restore":
-          await restoreTabs();
-          break;
-      }
-    });
-  }
-
-  private _getHtmlContent(): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      padding: 10px;
-      font-family: var(--vscode-font-family);
-    }
-    button {
-      width: 100%;
-      padding: 10px 16px;
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 8px;
-    }
-    button:hover {
-      background: var(--vscode-button-hoverBackground);
-    }
-    button.secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-    }
-    button.secondary:hover {
-      background: var(--vscode-button-secondaryHoverBackground);
-    }
-    p {
-      color: var(--vscode-descriptionForeground);
-      font-size: 12px;
-      margin-top: 8px;
-      margin-bottom: 16px;
-      line-height: 1.4;
-    }
-    hr {
-      border: none;
-      border-top: 1px solid var(--vscode-widget-border);
-      margin: 16px 0;
-    }
-  </style>
-</head>
-<body>
-  <button id="openAll">Open All Lintable Files</button>
-  <p>Opens all code and config files to trigger linters and type checkers. Respects .gitignore and excludes node_modules, venv, build outputs, and files over 1MB.</p>
-
-  <hr>
-
-  <button id="closeAll" class="secondary">Close All Tabs</button>
-  <button id="restore" class="secondary">Restore Previous Tabs</button>
-  <p>Close all open tabs or restore the tabs that were open before the last action.</p>
-
-  <script>
-    const vscode = acquireVsCodeApi();
-    document.getElementById('openAll').addEventListener('click', () => {
-      vscode.postMessage({ command: 'openAll' });
-    });
-    document.getElementById('closeAll').addEventListener('click', () => {
-      vscode.postMessage({ command: 'closeAll' });
-    });
-    document.getElementById('restore').addEventListener('click', () => {
-      vscode.postMessage({ command: 'restore' });
-    });
-  </script>
-</body>
-</html>`;
-  }
-}
-
-export function activate(context: vscode.ExtensionContext) {
-  // Register command
-  const commandDisposable = vscode.commands.registerCommand(
-    "openAllLintableFiles.open",
-    openAllLintableFiles,
+export function activate(context: vscode.ExtensionContext): void {
+  const workspaceCommandDisposable = vscode.commands.registerCommand(
+    "vsCodeCheck.checkWorkspace",
+    checkWorkspace,
   );
-  context.subscriptions.push(commandDisposable);
+  context.subscriptions.push(workspaceCommandDisposable);
 
-  // Register folder context menu command
   const folderCommandDisposable = vscode.commands.registerCommand(
-    "openAllLintableFiles.openFolder",
-    openFolderLintableFiles,
+    "vsCodeCheck.checkFolder",
+    checkFolder,
   );
   context.subscriptions.push(folderCommandDisposable);
 
-  // Register webview provider for activity bar
-  const provider = new LintableFilesViewProvider(context.extensionUri);
-  const viewDisposable = vscode.window.registerWebviewViewProvider(
-    LintableFilesViewProvider.viewType,
-    provider,
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    100,
   );
-  context.subscriptions.push(viewDisposable);
+  statusBarItem.text = "$(pulse) Code Check";
+  statusBarItem.tooltip = "Re-diagnose all lintable workspace files";
+  statusBarItem.command = "vsCodeCheck.checkWorkspace";
+  statusBarItem.show();
+  context.subscriptions.push(statusBarItem);
 }
 
 // Required by VS Code extension API but no cleanup needed
