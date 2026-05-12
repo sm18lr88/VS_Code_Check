@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - v*
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Type-check, build, and package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check and build
+        run: npm run ci
+
+      - name: Package VSIX
+        run: npm run package -- --out vs-code-check-${{ github.ref_name }}.vsix
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vs-code-check-vsix
+          path: vs-code-check-${{ github.ref_name }}.vsix
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: VS Code Check ${{ github.ref_name }}
+          body_path: .github/release-notes/v1.1.0.md
+          files: vs-code-check-${{ github.ref_name }}.vsix

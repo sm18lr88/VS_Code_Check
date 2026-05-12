@@ -1,10 +1,16 @@
 .vscode/**
+.github/**
+.claude/**
+.agents/**
+.codex/**
+.sisyphus/**
 node_modules/**
 src/**
 .gitignore
 .git/**
 esbuild.ts
 tsconfig.json
+package-lock.json
 *.vsix
 icon.svg
 **/*.ts

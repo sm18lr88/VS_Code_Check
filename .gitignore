@@ -1,3 +1,11 @@
 node_modules/
 dist/
 *.vsix
+.vscode/
+.claude/
+.agents/
+.codex/
+.sisyphus/
+*.log
+.env
+.env.*
