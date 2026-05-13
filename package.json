@@ -22,12 +22,10 @@
     "theme": "dark"
   },
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.118.0"
   },
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:vsCodeCheck.checkWorkspace",
-    "onCommand:vsCodeCheck.checkFolder"
+    "onStartupFinished"
   ],
   "categories": [
     "Linters",
@@ -88,12 +86,12 @@
     "package": "vsce package"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/vscode": "^1.74.0",
-    "@vscode/vsce": "^3.7.1",
-    "esbuild": "^0.20.0",
+    "@types/node": "^25.7.0",
+    "@types/vscode": "^1.118.0",
+    "@vscode/vsce": "^3.9.1",
+    "esbuild": "^0.28.0",
     "sharp": "^0.34.5",
-    "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   }
 }

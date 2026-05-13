@@ -1,5 +1,7 @@
 # VS Code Check
 
+[![CI](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml/badge.svg)](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml)
+
 A concise VS Code extension that refreshes Problems diagnostics by loading lintable workspace files on demand.
 
 ## Features
@@ -68,6 +70,13 @@ Many linters and type checkers in VS Code only analyze open files. This extensio
 
 ## Installation
 
+### From GitHub
+
+Download the latest packaged `.vsix` from either:
+
+- The latest successful CI run artifact on the [CI workflow](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml)
+- A tagged [GitHub release](https://github.com/sm18lr88/VS_Code_Check/releases), when available
+
 ### From VSIX (Local)
 
 1. Download or build the `.vsix` file
@@ -83,6 +92,10 @@ npm install
 npm run ci
 npm run package
 ```
+
+## CI/CD
+
+GitHub Actions runs on pushes to `master`, pull requests, and version tags. The workflow type-checks, builds, packages the extension into a `.vsix`, and uploads it as a downloadable workflow artifact. Tags named like `v1.1.1` also publish a GitHub Release with the VSIX attached.
 
 ## License
 
