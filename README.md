@@ -2,7 +2,10 @@
 
 [![CI](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml/badge.svg)](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml)
 
-A concise VS Code extension that refreshes Problems diagnostics by loading lintable workspace files on demand.
+VS Code extension that refreshes Problems diagnostics by loading all lintable workspace files on demand.
+
+<img width="315" alt="image" src="https://github.com/user-attachments/assets/8b9ed07f-24cd-4d43-af56-6eee80ea7c82" />
+
 
 ## Features
 
