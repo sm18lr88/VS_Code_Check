@@ -2,16 +2,15 @@
 
 [![CI](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml/badge.svg)](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml)
 
-- VS Code extension that refreshes Problems diagnostics by loading all lintable workspace files on demand.
-- Simpler terms: mimics manually opening and loading all files in order to detect errors/warnings in your codebase.
+VS Code Check is a VS Code extension that refreshes the Problems diagnostics by loading all lintable workspace files on demand. In simpler terms, it does what you would do by opening and loading every file by hand to find the errors and warnings in your codebase.
 
 <img width="315" alt="image" src="https://github.com/user-attachments/assets/8b9ed07f-24cd-4d43-af56-6eee80ea7c82" />
 
 
 ## Features
 
-- **VS Code Check** - Click the status bar button to re-check all lintable workspace files
-- **Check Folder** - Right-click any folder in the Explorer to check only its lintable files
+- **VS Code Check**: click the status bar button to re-check all lintable workspace files.
+- **Check Folder**: right-click any folder in the Explorer to check only its lintable files.
 
 ### Supported File Types
 
@@ -39,11 +38,11 @@
 
 ### Smart Exclusions
 
-The extension automatically excludes:
+The extension excludes these automatically:
 
 - **Directories**: `node_modules`, `.git`, `venv`, `.venv`, `dist`, `build`, `__pycache__`, `.next`, `coverage`, and many more
-- **Files**: Lock files (`package-lock.json`, `yarn.lock`, etc.), minified files (`*.min.js`), compiled files, logs, and environment files
-- **Large files**: Files over 1MB are skipped
+- **Files**: lock files (`package-lock.json`, `yarn.lock`, etc.), minified files (`*.min.js`), compiled files, logs, and environment files
+- **Large files**: files over 1MB are skipped
 - **Generated/dependency folders**: Skips common build outputs, caches, virtual environments, and dependency folders
 
 ## Usage
@@ -54,7 +53,7 @@ Click **Code Check** in the VS Code status bar to re-check all lintable files in
 
 ### Folder Context Menu
 
-Right-click any folder in the Explorer and select **"VS Code Check: Check Folder"** to check only lintable files from that specific folder and its subfolders.
+Right-click a folder in the Explorer and select **"VS Code Check: Check Folder"**. This checks only the lintable files in that folder and its subfolders.
 
 ### Command Palette
 
@@ -62,30 +61,30 @@ You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search
 
 ## Configuration
 
-- `vsCodeCheck.openConcurrency` (default: `32`) — How many files to load in parallel. Set to `0` to load all files at once (may freeze VS Code in very large workspaces).
+- `vsCodeCheck.openConcurrency` (default: `32`): how many files to load in parallel. Set it to `0` to load all files at once, which may freeze VS Code in very large workspaces.
 
 ## Why?
 
-Many linters and type checkers in VS Code only analyze open files. This extension helps you:
+Many linters and type checkers in VS Code only analyze open files. With this extension you can:
 
 - See all TypeScript/ESLint/Python errors across your entire project
-- Quickly audit code quality before committing
+- Audit code quality quickly before committing
 - Find unused imports, type errors, and lint issues in files you haven't opened
 
 ## Installation
 
 ### From GitHub
 
-Download the latest packaged `.vsix` from either:
+Download the latest packaged `.vsix` from either of these:
 
 - The latest successful CI run artifact on the [CI workflow](https://github.com/sm18lr88/VS_Code_Check/actions/workflows/ci.yml)
 - A tagged [GitHub release](https://github.com/sm18lr88/VS_Code_Check/releases), when available
 
 ### From VSIX (Local)
 
-1. Download or build the `.vsix` file
-2. In VS Code: `Ctrl+Shift+P` → "Extensions: Install from VSIX..."
-3. Select the `.vsix` file
+1. Download or build the `.vsix` file.
+2. In VS Code, press `Ctrl+Shift+P` and choose "Extensions: Install from VSIX...".
+3. Select the `.vsix` file.
 
 ### Build from Source
 
@@ -99,7 +98,7 @@ npm run package
 
 ## CI/CD
 
-GitHub Actions runs on pushes to `master`, pull requests, and version tags. The workflow type-checks, builds, packages the extension into a `.vsix`, and uploads it as a downloadable workflow artifact. Tags named like `v1.1.1` also publish a GitHub Release with the VSIX attached.
+GitHub Actions runs on pushes to `master`, on pull requests, and on version tags. The workflow type-checks, builds, and packages the extension into a `.vsix`, then uploads it as a downloadable workflow artifact. Tags named like `v1.1.1` also publish a GitHub Release with the VSIX attached.
 
 ## License
 
