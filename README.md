@@ -43,7 +43,7 @@ The extension excludes these automatically:
 - **Directories**: `node_modules`, `.git`, `venv`, `.venv`, `dist`, `build`, `__pycache__`, `.next`, `coverage`, and many more
 - **Files**: lock files (`package-lock.json`, `yarn.lock`, etc.), minified files (`*.min.js`), compiled files, logs, and environment files
 - **Large files**: files over 1MB are skipped
-- **Generated/dependency folders**: Skips common build outputs, caches, virtual environments, and dependency folders
+- **Generated/dependency folders**: Skips common build outputs, caches, virtual environments, and dependency folders. Source folders such as monorepo `packages/` and Go `pkg/` are still checked.
 
 ## Usage
 
@@ -57,7 +57,7 @@ Right-click a folder in the Explorer and select **"VS Code Check: Check Folder"*
 
 ### Command Palette
 
-You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for "VS Code Check: Check Workspace".
+You can also use the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`). "VS Code Check: Check Workspace" checks the whole workspace, and "VS Code Check: Check Folder" asks you to pick one or more folders.
 
 ## Configuration
 
