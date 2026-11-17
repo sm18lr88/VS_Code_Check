@@ -1,10 +1,6 @@
 import * as vscode from "vscode";
 import { openFilesWithProgress } from "./documentLoader";
-import { buildExcludePattern } from "./filePolicies";
-import {
-  filterLintableFiles,
-  findLintableFilesInFolders,
-} from "./workspaceDiscovery";
+import { findLintableFilesInFolders } from "./workspaceDiscovery";
 
 export async function checkWorkspace(): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -13,109 +9,77 @@ export async function checkWorkspace(): Promise<void> {
     return;
   }
 
-  await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: "Diagnosing workspace...",
-      cancellable: true,
-    },
-    async (progress, token) => {
-      const includePattern = "**/*";
-      const excludePattern = buildExcludePattern();
-
-      progress.report({ message: "Finding files..." });
-
-      const files = await vscode.workspace.findFiles(
-        includePattern,
-        excludePattern,
-      );
-
-      if (token.isCancellationRequested) {
-        return;
-      }
-
-      const filesToOpen = await filterLintableFiles(
-        files,
-        token,
-        workspaceFolders.map((folder) => folder.uri),
-      );
-
-      if (token.isCancellationRequested) {
-        return;
-      }
-
-      if (filesToOpen.length === 0) {
-        vscode.window.showInformationMessage("No lintable files found");
-        return;
-      }
-
-      progress.report({
-        message: `Loading ${filesToOpen.length} files for diagnostics...`,
-      });
-
-      const opened = await openFilesWithProgress(filesToOpen, progress, token);
-
-      if (!token.isCancellationRequested) {
-        vscode.window.showInformationMessage(
-          `Loaded ${opened} lintable files for diagnostics`,
-        );
-      }
-    },
+  await diagnoseFolders(
+    workspaceFolders.map((folder) => folder.uri),
+    "Diagnosing workspace...",
+    "lintable files",
   );
 }
 
+/** Explorer passes the clicked folder and the selection; the Command Palette passes nothing. */
 export async function checkFolder(
   folderUri?: vscode.Uri,
   selectedUris?: vscode.Uri[],
 ): Promise<void> {
-  let foldersToProcess: vscode.Uri[];
+  let candidates: readonly vscode.Uri[];
   if (selectedUris && selectedUris.length > 0) {
-    foldersToProcess = selectedUris;
+    candidates = selectedUris;
   } else if (folderUri) {
-    foldersToProcess = [folderUri];
+    candidates = [folderUri];
   } else {
-    foldersToProcess = [];
-  }
-
-  if (foldersToProcess.length === 0) {
-    vscode.window.showWarningMessage("No folder selected");
-    return;
-  }
-
-  const folderUris: vscode.Uri[] = [];
-  for (const uri of foldersToProcess) {
-    try {
-      const stat = await vscode.workspace.fs.stat(uri);
-      if (stat.type === vscode.FileType.Directory) {
-        folderUris.push(uri);
-      }
-    } catch {
-      // Skip invalid URIs
+    const picked = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: true,
+      defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
+      openLabel: "Check Folder",
+    });
+    if (!picked) {
+      return;
     }
+    candidates = picked;
   }
 
+  const folderUris = await keepDirectories(candidates);
   if (folderUris.length === 0) {
     vscode.window.showWarningMessage("No valid folders selected");
     return;
   }
 
-  await vscode.window.withProgress(
-    {
-      location: vscode.ProgressLocation.Notification,
-      title: `Diagnosing ${folderUris.length} folder(s)...`,
-      cancellable: true,
-    },
-    async (progress, token) => {
-      const filesToOpen = await findLintableFilesInFolders(
-        folderUris,
-        progress,
-        token,
-      );
+  await diagnoseFolders(
+    folderUris,
+    `Diagnosing ${folderUris.length} folder(s)...`,
+    "lintable files from selected folder(s)",
+  );
+}
 
+async function keepDirectories(uris: readonly vscode.Uri[]): Promise<vscode.Uri[]> {
+  const directories: vscode.Uri[] = [];
+  for (const uri of uris) {
+    try {
+      const stat = await vscode.workspace.fs.stat(uri);
+      if (stat.type & vscode.FileType.Directory) {
+        directories.push(uri);
+      }
+    } catch {
+      // Skip invalid URIs
+    }
+  }
+  return directories;
+}
+
+async function diagnoseFolders(
+  folderUris: readonly vscode.Uri[],
+  title: string,
+  loadedLabel: string,
+): Promise<void> {
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title, cancellable: true },
+    async (progress, token) => {
+      const filesToOpen = await findLintableFilesInFolders(folderUris, progress, token);
       if (token.isCancellationRequested) {
         return;
       }
-
       if (filesToOpen.length === 0) {
         vscode.window.showInformationMessage("No lintable files found");
         return;
@@ -124,13 +88,9 @@ export async function checkFolder(
       progress.report({
         message: `Loading ${filesToOpen.length} files for diagnostics...`,
       });
-
       const opened = await openFilesWithProgress(filesToOpen, progress, token);
-
       if (!token.isCancellationRequested) {
-        vscode.window.showInformationMessage(
-          `Loaded ${opened} lintable files from selected folder(s) for diagnostics`,
-        );
+        vscode.window.showInformationMessage(`Loaded ${opened} ${loadedLabel} for diagnostics`);
       }
     },
   );

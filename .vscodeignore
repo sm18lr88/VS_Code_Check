@@ -11,7 +11,8 @@ src/**
 esbuild.ts
 tsconfig.json
 package-lock.json
-*.vsix
+**/*.vsix
+artifacts/**
 screenshot.png
 screenshots/**
 icon.svg

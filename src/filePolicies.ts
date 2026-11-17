@@ -60,7 +60,6 @@ const LINTABLE_EXTENSIONS = [
   "pm",
   "lua",
   "r",
-  "R",
   // Mobile/Native
   "swift",
   "m",
@@ -105,7 +104,6 @@ const LINTABLE_EXTENSIONS = [
   // Build systems
   "make",
   "cmake",
-  "gradle",
   "bazel",
   // Protocol/IDL
   "proto",
@@ -262,12 +260,7 @@ const EXCLUDED_DIRECTORIES = [
   "logs",
   // Ruby
   ".bundle",
-  // Rust
-  "target",
-  // Go
-  "pkg",
   // .NET
-  "packages",
   ".nuget",
   // Generic build/generated artifacts
   "__generated__", // GraphQL codegen, apollo, etc.
@@ -360,74 +353,30 @@ const EXCLUDED_FILES = [
   "*.snap",
 ];
 
-const GLOB_WILDCARD = String.fromCharCode(42);
-const REGEX_ANY_CHARS = `.${GLOB_WILDCARD}`;
+export const MAX_FILE_SIZE = 1024 * 1024; // 1 MB
 
-// Pre-computed lookup structures for efficient path-component filtering
-// (defense-in-depth: catches anything that slips through the glob exclude pattern)
-const EXCLUDED_DIR_NAMES = new Set<string>(
-  EXCLUDED_DIRECTORIES.filter((directory) => !directory.includes(GLOB_WILDCARD)),
-);
-const EXCLUDED_DIR_GLOB_PATTERNS = EXCLUDED_DIRECTORIES.filter((directory) =>
-  directory.includes(GLOB_WILDCARD),
-);
+/** Glob for `findFiles`; `isInExcludedDirectory` re-checks each result. */
+export const EXCLUDE_GLOB = `{${EXCLUDED_DIRECTORIES.map((directory) => `**/${directory}/**`).join(",")}}`;
 
-export const MAX_FILE_SIZE = 1024 * 1024; // 1MB
-
-function simpleGlobPatternToRegex(pattern: string): RegExp {
-  return new RegExp(
-    "^" +
-      pattern
-        .replaceAll(".", String.raw`\.`)
-        .replaceAll(GLOB_WILDCARD, REGEX_ANY_CHARS) +
-      "$",
-  );
+function globToRegex(pattern: string): RegExp {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", ".*");
+  return new RegExp(`^${escaped}$`);
 }
 
-function isDirComponentExcluded(segment: string): boolean {
-  if (EXCLUDED_DIR_NAMES.has(segment)) {
-    return true;
-  }
-  for (const pattern of EXCLUDED_DIR_GLOB_PATTERNS) {
-    if (simpleGlobPatternToRegex(pattern).test(segment)) {
-      return true;
-    }
-  }
-  return false;
+function nameMatcher(patterns: readonly string[]): (name: string) => boolean {
+  const exact = new Set(patterns.filter((pattern) => !pattern.includes("*")));
+  const wildcards = patterns.filter((pattern) => pattern.includes("*")).map(globToRegex);
+  return (name) => exact.has(name) || wildcards.some((regex) => regex.test(name));
 }
 
-/** Returns true if any workspace-relative path segment belongs to an excluded directory. */
+const isExcludedDirectoryName = nameMatcher(EXCLUDED_DIRECTORIES);
+
+export const shouldExcludeFile = nameMatcher(EXCLUDED_FILES);
+
+/** True if a directory in the root-relative path is excluded; the file name itself is not checked. */
 export function isInExcludedDirectory(relativePath: string): boolean {
-  const normalized = relativePath.replace(/\\/g, "/");
-  for (const segment of normalized.split("/")) {
-    if (segment && isDirComponentExcluded(segment)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export function buildExcludePattern(): string {
-  const allPatterns = new Set<string>();
-
-  for (const directory of EXCLUDED_DIRECTORIES) {
-    allPatterns.add(`**/${directory}/**`);
-  }
-
-  return `{${Array.from(allPatterns).join(",")}}`;
-}
-
-export function shouldExcludeFile(fileName: string): boolean {
-  for (const pattern of EXCLUDED_FILES) {
-    if (pattern.includes(GLOB_WILDCARD)) {
-      if (simpleGlobPatternToRegex(pattern).test(fileName)) {
-        return true;
-      }
-    } else if (fileName === pattern) {
-      return true;
-    }
-  }
-  return false;
+  const directories = relativePath.split(/[\\/]/).slice(0, -1);
+  return directories.some((segment) => segment !== "" && isExcludedDirectoryName(segment));
 }
 
 export function isLintableFileName(fileName: string): boolean {

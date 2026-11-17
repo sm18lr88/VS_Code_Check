@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import {
-  buildExcludePattern,
+  EXCLUDE_GLOB,
   isInExcludedDirectory,
   isLintableFileName,
   MAX_FILE_SIZE,
@@ -27,7 +27,7 @@ function getRelativePathInRoots(
   return path.basename(uri.fsPath);
 }
 
-export async function filterLintableFiles(
+async function filterLintableFiles(
   files: readonly vscode.Uri[],
   token: vscode.CancellationToken,
   rootUris: readonly vscode.Uri[],
@@ -90,12 +90,9 @@ export async function findLintableFilesInFolders(
       message: `Finding files in ${folderName}... (${i + 1}/${folderUris.length})`,
     });
 
-    const includePattern = new vscode.RelativePattern(folderUri, "**/*");
-    const excludePattern = buildExcludePattern();
-
     const filesInFolder = await vscode.workspace.findFiles(
-      includePattern,
-      excludePattern || undefined,
+      new vscode.RelativePattern(folderUri, "**/*"),
+      EXCLUDE_GLOB,
     );
 
     for (const file of filesInFolder) {

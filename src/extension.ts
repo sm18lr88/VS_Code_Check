@@ -24,8 +24,3 @@ export function activate(context: vscode.ExtensionContext): void {
   statusBarItem.show();
   context.subscriptions.push(statusBarItem);
 }
-
-// Required by VS Code extension API but no cleanup needed
-export function deactivate(): void {
-  // No resources to dispose
-}

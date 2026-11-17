@@ -32,27 +32,6 @@ export async function openFilesWithProgress(
   token: vscode.CancellationToken,
 ): Promise<number> {
   const total = filesToOpen.length;
-  const concurrency = getOpenConcurrency(total);
-  if (concurrency <= 1) {
-    let opened = 0;
-    for (const file of filesToOpen) {
-      if (token.isCancellationRequested) {
-        vscode.window.showInformationMessage(
-          `Cancelled. Opened ${opened} of ${total} files.`,
-        );
-        return opened;
-      }
-      if (await tryLoadFileForDiagnostics(file)) {
-        opened++;
-      }
-      progress.report({
-        message: `Loading files for diagnostics... (${opened}/${total})`,
-        increment: 100 / total,
-      });
-    }
-    return opened;
-  }
-
   let opened = 0;
   let currentIndex = 0;
   const increment = 100 / total;
@@ -85,8 +64,7 @@ export async function openFilesWithProgress(
     }
   };
 
-  const workerCount = Math.min(concurrency, total);
-  const workers = Array.from({ length: workerCount }, () => openNext());
+  const workers = Array.from({ length: getOpenConcurrency(total) }, () => openNext());
   await Promise.all(workers);
 
   if (opened > lastReportedOpened) {
